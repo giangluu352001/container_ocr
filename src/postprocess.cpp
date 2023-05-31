@@ -3,10 +3,10 @@
 #include <clipper2/clipper.h>
 
 namespace ContainerOCR {
-    std::vector<cv::Point2f> DBPostProcessor::unclip(const std::vector<std::vector<float>> &box, const double &unclip_ratio) {
+    std::vector<cv::Point2f> DBPostProcessor::unclip(const std::vector<cv::Point2f> &box, const double &unclip_ratio) {
         Clipper2Lib::Path64 poly;
         for (int i = 0; i < box.size(); i++) {
-            poly.push_back(Clipper2Lib::Point64(int(box[i][0]), int(box[i][1])));
+            poly.push_back(Clipper2Lib::Point64(int(box[i].x), int(box[i].y)));
         }
         double distance = Area(poly) * unclip_ratio / Clipper2Lib::Length(poly);
         Clipper2Lib::ClipperOffset offset;
@@ -22,10 +22,11 @@ namespace ContainerOCR {
         }
         return points;
     }
-    double DBPostProcessor::box_score_fast(const cv::Mat &bitmap, const std::vector<std::vector<float>> &box) {
+    double DBPostProcessor::box_score_fast(const cv::Mat &bitmap, const std::vector<cv::Point2f> &box) {
         int h = bitmap.rows, w = bitmap.cols;
-        float box_x[4] = { box[0][0], box[1][0], box[2][0], box[3][0] };
-        float box_y[4] = { box[0][1], box[1][1], box[2][1], box[3][1] };
+        const int rotated_rectangle_size = 4;
+        float box_x[4] = { box[0].x, box[1].x, box[2].x, box[3].x };
+        float box_y[4] = { box[0].y, box[1].y, box[2].y, box[3].y };
 
         int xmin = std::clamp(int(floor(*(std::min_element(box_x, box_x + 4)))), 0, w - 1);
         int xmax = std::clamp(int(ceil(*(std::max_element(box_x, box_x + 4)))), 0, w - 1);
@@ -36,52 +37,44 @@ namespace ContainerOCR {
         int mask_height = ymax - ymin + 1;
         cv::Mat mask = cv::Mat::zeros(mask_height, mask_width, CV_8UC1);
 
-        cv::Point root_point[4];
-        root_point[0] = cv::Point(int(box[0][0]) - xmin, int(box[0][1]) - ymin);
-        root_point[1] = cv::Point(int(box[1][0]) - xmin, int(box[1][1]) - ymin);
-        root_point[2] = cv::Point(int(box[2][0]) - xmin, int(box[2][1]) - ymin);
-        root_point[3] = cv::Point(int(box[3][0]) - xmin, int(box[3][1]) - ymin);
+        cv::Point root_point[rotated_rectangle_size];
+        for (int i = 0; i < rotated_rectangle_size; i++) {
+            root_point[i] = cv::Point(int(box[i].x) - xmin, int(box[i].y) - ymin);
+        }
         const cv::Point* ppt[1] = { root_point };
-        int npt[] = { 4 };
+        int npt[] = { rotated_rectangle_size };
         cv::fillPoly(mask, ppt, npt, 1, cv::Scalar(1));
         cv::Mat croppedImg = bitmap(cv::Rect(xmin, ymin, mask_width, mask_height));
         auto score = cv::mean(croppedImg, mask)[0];
         return score;
     }
-    std::vector<std::vector<float>> DBPostProcessor::get_mini_boxes(const cv::InputArray &box, float &sside) {
+    std::vector<cv::Point2f> DBPostProcessor::get_mini_boxes(const cv::InputArray &box, float &sside) {
         cv::RotatedRect bounding_box = cv::minAreaRect(box);
         sside = std::min(bounding_box.size.width, bounding_box.size.height);
         cv::Mat points;
         cv::boxPoints(bounding_box, points);
-        auto array = Utils::Mat2Vector(points);
-        std::sort(array.begin(), array.end(),
-            [](const std::vector<float> &a, const std::vector<float> &b) {
-                return a[1] > b[1];
-        });
-        float leftNeighbor = std::atan2f(std::abs(array[1][1] - array[0][1]), std::abs(array[1][0] - array[0][0]));
-        float rightNeighbor = std::atan2f(std::abs(array[2][1] - array[0][1]), std::abs(array[2][0] - array[0][0]));
-        std::vector<std::vector<float>> bottom;
-        std::vector<std::vector<float>> top;
+        auto pts = Utils::Mat2Points(points);
+        Utils::sortPointsByY(pts);
+        float leftNeighbor = std::atan2f(std::abs(pts[1].y - pts[0].y), 
+            std::abs(pts[1].x - pts[0].x));
+        float rightNeighbor = std::atan2f(std::abs(pts[2].y - pts[0].y), 
+            std::abs(pts[2].x - pts[0].x));
+        std::vector<cv::Point2f> bottom;
+        std::vector<cv::Point2f> top;
         if (rightNeighbor < leftNeighbor) {
-            bottom = { array[0], array[2] };
-            top = { array[3], array[1] };
+            bottom = {pts[0], pts[2] };
+            top = { pts[3], pts[1] };
         }
         else {
-            bottom = { array[0], array[1] };
-            top = { array[3], array[2] };
+            bottom = { pts[0], pts[1] };
+            top = { pts[3], pts[2] };
         }
-        sort(top.begin(), top.end(),
-            [](const std::vector<float> &a, const std::vector<float> &b) {
-                return a[0] < b[0];
-        });
-        sort(bottom.begin(), bottom.end(),
-            [](const std::vector<float> &a, const std::vector<float> &b) {
-                return a[0] < b[0];
-        });
-        array = { top[0], top[1], bottom[1], bottom[0] };
-        return array;
+        Utils::sortPointsByX(top);
+        Utils::sortPointsByX(bottom);
+        pts = { top[0], top[1], bottom[1], bottom[0] };
+        return pts;
     }
-    std::vector<std::vector<std::vector<int>>> DBPostProcessor::boxes_from_bitmap(const cv::Mat &pred, 
+    std::vector<std::vector<cv::Point2f>> DBPostProcessor::boxes_from_bitmap(const cv::Mat &pred, 
         const cv::Mat &bitmap, const int &dest_width, const int &dest_height, 
         const int &max_candidates, const int &min_size, const double &box_thresh, const double &unclip_ratio) {
         const int width = bitmap.cols, height = bitmap.rows;
@@ -89,7 +82,7 @@ namespace ContainerOCR {
         std::vector<cv::Vec4i> hierarchy;
         cv::findContours(bitmap, contours, hierarchy, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
         const size_t num_contours = std::min(contours.size(), static_cast<size_t>(max_candidates));
-        std::vector<std::vector<std::vector<int>>> boxes;
+        std::vector<std::vector<cv::Point2f>> boxes;
         boxes.reserve(num_contours);
         for (const auto &contour : contours) {
             float sside;
@@ -107,14 +100,14 @@ namespace ContainerOCR {
                 continue;
             }
 
-            std::vector<std::vector<int>> temp_box;
+            std::vector<cv::Point2f> temp_box;
             temp_box.reserve(4);
             const float width_ratio = float(dest_width) / width;
             const float height_ratio = float(dest_height) / height;
             for (const auto &point : box) {
-                const int x = std::clamp(int(point[0] * width_ratio), 0, dest_width);
-                const int y = std::clamp(int(point[1] * height_ratio), 0, dest_height);
-                temp_box.push_back({ x, y });
+                const int x = std::clamp(int(point.x * width_ratio), 0, dest_width);
+                const int y = std::clamp(int(point.y * height_ratio), 0, dest_height);
+                temp_box.push_back(cv::Point2f(x, y));
             }
             boxes.push_back(temp_box);
         }

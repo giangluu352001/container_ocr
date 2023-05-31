@@ -1,6 +1,30 @@
 #include <include/utils.h>
 
 namespace ContainerOCR {
+    void Utils::sortPointsByX(std::vector<cv::Point2f> &points) {
+        std::sort(points.begin(), points.end(),
+            [](const cv::Point2f &a, const cv::Point2f &b) {
+                return a.x < b.x;
+            });
+    }
+    void Utils::sortPointsByY(std::vector<cv::Point2f>& points) {
+        std::sort(points.begin(), points.end(),
+            [](const cv::Point2f& a, const cv::Point2f& b) {
+                return a.y > b.y;
+            });
+    }
+    void Utils::sortBoxesByX(std::vector<OCRResult>& codes) {
+        std::sort(codes.begin(), codes.end(),
+            [](const OCRResult& a, const OCRResult& b) {
+                return a.box[0].x < b.box[0].x;
+            });
+    }
+    void Utils::sortBoxesByY(std::vector<OCRResult> &codes) {
+        std::sort(codes.begin(), codes.end(), 
+            [](const OCRResult& a, const OCRResult& b) {
+            return a.box[0].y < b.box[0].y;
+        });
+    }
 	std::vector<std::vector<float>> Utils::Mat2Vector(const cv::Mat& mat) {
         std::vector<std::vector<float>> img_vec(mat.rows, std::vector<float>(mat.cols));
         for (int i = 0; i < mat.rows; ++i) {
@@ -11,7 +35,17 @@ namespace ContainerOCR {
         }
         return img_vec;
 	}
-
+    std::vector<cv::Point2f> Utils::Mat2Points(const cv::Mat &mat) {
+        std::vector<cv::Point2f> points;
+        for (int i = 0; i < mat.rows; ++i) {
+            const float* row_ptr = mat.ptr<float>(i);
+            for (int j = 0; j < mat.cols; j += 2) {
+                cv::Point2f point(row_ptr[j], row_ptr[j + 1]);
+                points.push_back(point);
+            }
+        }
+        return points;
+    }
     std::vector<std::vector<std::vector<float>>> Utils::Tensor3D2Vector(const at::Tensor& tensor)
     {
         int batch_size = tensor.size(0);
@@ -36,16 +70,16 @@ namespace ContainerOCR {
         return seq_vec;
     }
 
-    cv::Mat Utils::get_rotate_crop_image(const cv::Mat &srcimage, const std::vector<std::vector<int>> &box) {
-        std::vector<cv::Point2f> points(4);
-        for (int i = 0; i < 4; i++) {
-            points[i] = cv::Point2f(box[i][0], box[i][1]);
-        }
+    cv::Mat Utils::get_rotate_crop_image(const cv::Mat &srcimage, const std::vector<cv::Point2f> &box) {
+        //std::vector<cv::Point2f> points(4);
+        //for (int i = 0; i < 4; i++) {
+        //    points[i] = cv::Point2f(box[i][0], box[i][1]);
+        //}
 
-        cv::Point2f tl = points[0];
-        cv::Point2f tr = points[1];
-        cv::Point2f br = points[2];
-        cv::Point2f bl = points[3];
+        cv::Point2f tl = box[0];
+        cv::Point2f tr = box[1];
+        cv::Point2f br = box[2];
+        cv::Point2f bl = box[3];
 
         float widthA = std::sqrt((br.x - bl.x) * (br.x - bl.x) + (br.y - bl.y) * (br.y - bl.y));
         float widthB = std::sqrt((tr.x - tl.x) * (tr.x - tl.x) + (tr.y - tl.y) * (tr.y - tl.y));
@@ -61,7 +95,7 @@ namespace ContainerOCR {
         dstPoints[2] = cv::Point2f(static_cast<float>(maxWidth - 1), static_cast<float>(maxHeight - 1));
         dstPoints[3] = cv::Point2f(0, static_cast<float>(maxHeight - 1));
 
-        cv::Mat M = cv::getPerspectiveTransform(points, dstPoints);
+        cv::Mat M = cv::getPerspectiveTransform(box, dstPoints);
         cv::Mat dst_img;
         cv::warpPerspective(srcimage, dst_img, M, cv::Size(maxWidth, maxHeight),
             cv::INTER_CUBIC, cv::BORDER_REPLICATE);

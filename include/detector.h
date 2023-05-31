@@ -19,7 +19,7 @@ namespace ContainerOCR {
 				this->scale = scale;
 				Utils::LoadModel(model_path, this->predictor);
 			}
-			void Run(cv::Mat& img, std::vector<std::vector<std::vector<int>>> &boxes);
+			void Run(cv::Mat& img, std::vector<std::vector<cv::Point2f>> &boxes);
 		private:
 			double thresh = 0.3;
 			double box_thresh = 0.7;

@@ -50,8 +50,8 @@ namespace ContainerOCR {
             for (int i = 0; i < numPoints; i++) {
                 auto box = codes[i].box;
 
-                data.at<float>(i, 0) = float(box[0][0] + box[1][0]) / 2;
-                data.at<float>(i, 1) = float(box[0][1] + box[2][1]) / 2;
+                data.at<float>(i, 0) = float(box[0].x + box[1].x) / 2;
+                data.at<float>(i, 1) = float(box[0].y + box[2].y) / 2;
             }
             cv::TermCriteria criteria(cv::TermCriteria::EPS + cv::TermCriteria::MAX_ITER, 10, 1.0);
             cv::Mat labels, centers;
@@ -77,14 +77,10 @@ namespace ContainerOCR {
     std::pair<std::string, float> ContExtraction::merge_code(std::vector<OCRResult> &codes) {
         if (!std::all_of(codes.begin(), codes.end(),
             [](const auto& code) { return code.isVertical; })) {
-            std::sort(codes.begin(), codes.end(), [](const OCRResult& a, const OCRResult& b) {
-                return a.box[0][1] < b.box[0][1];
-            });
+            Utils::sortBoxesByY(codes);
         }
         else {
-            std::sort(codes.begin(), codes.end(), [](const OCRResult& a, const OCRResult& b) {
-                return a.box[0][0] < b.box[0][0];
-            });
+            Utils::sortBoxesByX(codes);
             for (int i = 0; i < codes.size(); i++) {
                 if (codes[i].label.first.length() == this->max_len_code) {
                     std::iter_swap(codes.begin(), codes.begin() + i);
