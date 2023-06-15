@@ -1,6 +1,7 @@
-#include <include/postprocess.h>
-#include <include/utils.h>
-#include <clipper2/clipper.h>
+#include "include/postprocess.h"
+#include "include/utils.h"
+#include "include/clipper2/clipper.h"
+#include <cmath>
 
 namespace ContainerOCR {
     std::vector<cv::Point2f> DBPostProcessor::unclip(const std::vector<cv::Point2f> &box, const double &unclip_ratio) {
@@ -8,7 +9,7 @@ namespace ContainerOCR {
         for (int i = 0; i < box.size(); i++) {
             poly.push_back(Clipper2Lib::Point64(int(box[i].x), int(box[i].y)));
         }
-        double distance = Area(poly) * unclip_ratio / Clipper2Lib::Length(poly);
+        double distance = Clipper2Lib::Area(poly) * unclip_ratio / Clipper2Lib::Length(poly);
         Clipper2Lib::ClipperOffset offset;
         offset.AddPath(poly, Clipper2Lib::JoinType::Round, Clipper2Lib::EndType::Polygon);
         Clipper2Lib::Paths64 expanded;
@@ -55,9 +56,9 @@ namespace ContainerOCR {
         cv::boxPoints(bounding_box, points);
         auto pts = Utils::Mat2Points(points);
         Utils::sortPointsByY(pts);
-        float leftNeighbor = std::atan2f(std::abs(pts[1].y - pts[0].y), 
+        float leftNeighbor = std::atan2(std::abs(pts[1].y - pts[0].y), 
             std::abs(pts[1].x - pts[0].x));
-        float rightNeighbor = std::atan2f(std::abs(pts[2].y - pts[0].y), 
+        float rightNeighbor = std::atan2(std::abs(pts[2].y - pts[0].y), 
             std::abs(pts[2].x - pts[0].x));
         std::vector<cv::Point2f> bottom;
         std::vector<cv::Point2f> top;

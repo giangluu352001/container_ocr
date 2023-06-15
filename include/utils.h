@@ -1,7 +1,8 @@
 #pragma once
 
-#include "opencv2/opencv.hpp"
+#include <opencv2/opencv.hpp>
 #include <torch/script.h>
+#include <torch/torch.h>
 #include <torchvision/vision.h>
 
 namespace ContainerOCR {

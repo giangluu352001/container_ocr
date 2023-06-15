@@ -8,52 +8,37 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()    
-           
-list(APPEND CMAKE_FIND_ROOT_PATH "C:/C++Lib/")
-set(CLIPPER2_INC
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/include/clipper2/clipper.h"
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/include/clipper2/clipper.core.h"
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/include/clipper2/clipper.engine.h"
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/include/clipper2/clipper.export.h"
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/include/clipper2/clipper.minkowski.h"
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/include/clipper2/clipper.offset.h"
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/include/clipper2/clipper.rectclip.h"
-)
-    
-set(CLIPPER2_SRC
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/src/clipper.engine.cpp"
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/src/clipper.offset.cpp"
-  "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/src/clipper.rectclip.cpp"
-)  
-
-# set (ONNXRUNTIME_ROOTDIR "${CMAKE_FIND_ROOT_PATH}onnxruntime-win-x64-1.14.1")
-add_library(LVTN ${CLIPPER2_INC} ${CLIPPER2_SRC})
-target_include_directories(LVTN PUBLIC "${CMAKE_FIND_ROOT_PATH}Clipper2Lib/include")
-find_package( OpenCV REQUIRED )
+  
+find_package(OpenCV REQUIRED)
 find_package(Torch REQUIRED)
 find_package(TorchVision REQUIRED)
-     
-  
-AUX_SOURCE_DIRECTORY(./src SRCS)
-add_executable(opencvtest ${SRCS})
-# Additional Dependencies 
-target_link_libraries( opencvtest PUBLIC TorchVision::TorchVision "${OpenCV_DIR}/opencv_world470.lib" "${TORCH_LIBRARIES}" LVTN)
- 
+
 # Additional Include Directories
-include_directories( ${OpenCV_INCLUDE_DIRS} "${CMAKE_SOURCE_DIR}/")
-# Additional Library Directories
-link_directories( ${OpenCV_DIR})
+include_directories(${OpenCV_INCLUDE_DIRS} "${CMAKE_SOURCE_DIR}/")
+
+AUX_SOURCE_DIRECTORY(./src SRCS)
+add_executable(container-ocr ${SRCS})
+
+# Additional Dependencies 
+target_compile_features(container-ocr PUBLIC cxx_range_for)
+target_link_libraries(container-ocr PUBLIC 
+-Wl,--no-as-needed TorchVision::TorchVision -Wl,--as-needed 
+"${TORCH_LIBRARIES}" ${OpenCV_LIBS})
+
 if (MSVC)
   file(GLOB TORCH_DLLS "${TORCH_INSTALL_PREFIX}/lib/*.dll")
-  add_custom_command(TARGET opencvtest
+  add_custom_command(TARGET container-ocr
                     POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy_if_different
                     ${TORCH_DLLS}
-                    $<TARGET_FILE_DIR:opencvtest>)
+                    $<TARGET_FILE_DIR:container-ocr>)
 endif (MSVC)
-
+   
 message(STATUS "*** CMAKE ***: ${CMAKE_SOURCE_DIR}")
+message(STATUS "*** TORCHVISION ***: ${TorchVision_DIR}")
+message(STATUS "*** OPENCV ***: ${OpenCV_INCLUDE_DIRS}")
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
-include(CPack) 
+set_property(TARGET container-ocr PROPERTY CXX_STANDARD 17)
+include(CPack)  

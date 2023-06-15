@@ -1,12 +1,12 @@
 #pragma once
 
-#include "opencv2/opencv.hpp"
+#include <opencv2/opencv.hpp>
 #include <torch/script.h>
 
 namespace ContainerOCR {
 	class Resizer {
 		public:
-			virtual void Run(cv::Mat &img, const int& resized_size);
+			virtual void Run(cv::Mat &img, const std::pair<int, int> &resized_size, const bool &keep_ratio);
 	};
 	class Normalizer {
 		public:
@@ -14,6 +14,6 @@ namespace ContainerOCR {
 	};
 	class PermuteBatch {
 		public:
-			virtual void Run(const cv::Mat &img, std::vector<torch::jit::IValue> &data);
+			virtual void Run(const std::vector<cv::Mat> &imgs, std::vector<torch::jit::IValue> &data);
 	};
 }

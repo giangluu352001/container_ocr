@@ -1,15 +1,15 @@
 #pragma once
 
-#include <include/detector.h>
-#include <include/recognizer.h>
-#include <include/extraction.h>
+#include "include/detector.h"
+#include "include/recognizer.h"
+#include "include/extraction.h"
 
 namespace ContainerOCR {
 	class ContOCR {
 		public:
 			explicit ContOCR();
 			~ContOCR();
-			void Run(cv::Mat img);
+			std::vector<std::pair<std::string, float>> Run(const cv::Mat &img);
 		private:
 			float ratio_vertical = 3;
 

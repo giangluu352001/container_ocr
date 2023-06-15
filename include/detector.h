@@ -1,8 +1,8 @@
 #pragma once
 
-#include <include/preprocess.h>
-#include <include/postprocess.h>
-#include <include/utils.h>
+#include "include/preprocess.h"
+#include "include/postprocess.h"
+#include "include/utils.h"
 
 namespace ContainerOCR {
 	class DBDetector {

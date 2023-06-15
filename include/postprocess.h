@@ -1,9 +1,9 @@
 #pragma once
 
-#include "opencv2/opencv.hpp"
-#include <torch/script.h>
 #include <vector>
-#include <include/utils.h>
+#include <opencv2/opencv.hpp>
+#include <torch/script.h>
+#include "include/utils.h"
 
 namespace ContainerOCR {
     class DBPostProcessor {

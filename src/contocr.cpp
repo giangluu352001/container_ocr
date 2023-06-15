@@ -1,5 +1,5 @@
-#include <include/params.h>
-#include <include/contocr.h>
+#include "include/params.h"
+#include "include/contocr.h"
 
 namespace ContainerOCR {
 	ContOCR::ContOCR() {
@@ -8,9 +8,9 @@ namespace ContainerOCR {
 		this->detector = new DBDetector(det_model_path, det_db_thresh, det_db_box_thresh,
 			det_max_candidates, det_scale, det_db_unclip_ratio, det_text_min_size, det_db_size);
 		this->horizontal_recognizer = new SVTRRecognizer(rec_horizontal_model_path, 
-			rec_scale, prob_thesh, label_dict, topklargest, ignore_index);
+			rec_scale, prob_thesh, label_dict, topklargest, ignore_index, rec_height, rec_width);
 		this->vertical_recognizer = new SVTRRecognizer(rec_vertical_model_path,
-			rec_scale, prob_thesh, label_dict, topklargest, ignore_index);
+			rec_scale, prob_thesh, label_dict, topklargest, ignore_index, rec_height, rec_width);
 		this->extraction = new ContExtraction(alphabet, cluster_max_chars, max_len_code, max_len_seri_number);
 	}
 	ContOCR::~ContOCR() {
@@ -27,41 +27,51 @@ namespace ContainerOCR {
 			delete this->extraction;
 		}
 	}
-	void ContOCR::Run(cv::Mat img) {
-		cv::Mat originalImage;
-		img.copyTo(originalImage);
+	std::vector<std::pair<std::string, float>> ContOCR::Run(const cv::Mat &img) {
+		cv::Mat processedImage;
+		img.copyTo(processedImage);
 		std::vector<std::vector<cv::Point2f>> boxes;
 		std::vector<OCRResult> results;
-		auto start0 = std::chrono::high_resolution_clock::now();
-		this->detector->Run(img, boxes);
-		auto stop0 = std::chrono::high_resolution_clock::now();
-		auto duration0 = std::chrono::duration_cast<std::chrono::milliseconds>(stop0 - start0).count();
-		std::cout << "Time taken by function detector: " << duration0 << " milliseconds" << std::endl;
-		auto start1 = std::chrono::high_resolution_clock::now();
-		for (const auto &box : boxes) {
-			auto cropped = Utils::get_rotate_crop_image(originalImage, box);
-			bool isVertical = false;
+		//auto start0 = std::chrono::high_resolution_clock::now();
+		this->detector->Run(processedImage, boxes);
+		if (boxes.empty()) return {};
+		//auto stop0 = std::chrono::high_resolution_clock::now();
+		//auto duration0 = std::chrono::duration_cast<std::chrono::milliseconds>(stop0 - start0).count();
+		//std::cout << "Time taken by function detector: " << duration0 << " milliseconds" << std::endl;
+		std::vector<cv::Mat> horizontal_images;
+		std::vector<cv::Mat> vertical_images;
+		std::vector<bool> isVertical;
+		for (const auto &box: boxes) {
+			auto cropped = Utils::get_rotate_crop_image(img, box);
 			if (cropped.rows > this->ratio_vertical * cropped.cols) {
 				cv::rotate(cropped, cropped, cv::ROTATE_90_COUNTERCLOCKWISE);
-				isVertical = true;
+				vertical_images.push_back(cropped);
+				isVertical.push_back(true);
 			}
-			std::vector<std::pair<std::string, float>> labels;
-			std::vector<std::vector<CharacterReplacement>> replacements;
-			if (isVertical) this->vertical_recognizer->Run(cropped, labels, replacements);
-			else this->horizontal_recognizer->Run(cropped, labels, replacements);
-			OCRResult result = OCRResult(box, isVertical, replacements[0], labels[0]);
+			else {
+				horizontal_images.push_back(cropped);
+				isVertical.push_back(false);
+			}
+		}
+		std::vector<std::pair<std::string, float>> labels;
+		std::vector<std::vector<CharacterReplacement>> replacements;
+		//auto start1 = std::chrono::high_resolution_clock::now();
+		if (!vertical_images.empty()) this->vertical_recognizer->Run(vertical_images, labels, replacements);
+		if (!horizontal_images.empty()) this->horizontal_recognizer->Run(horizontal_images, labels, replacements);
+		//auto stop1 = std::chrono::high_resolution_clock::now();
+		//auto duration1 = std::chrono::duration_cast<std::chrono::milliseconds>(stop1 - start1).count();
+		//std::cout << "Time taken by function recognizer: " << duration1 << " milliseconds" << std::endl;
+		int num_of_ids = 0;
+		//auto start2 = std::chrono::high_resolution_clock::now();
+		for (int i = 0; i < labels.size(); i++) {
+			OCRResult result = OCRResult(boxes[i], isVertical[i], replacements[i], labels[i]);
+			num_of_ids += result.label.first.length();
 			results.push_back(result);
 		}
-		auto stop1 = std::chrono::high_resolution_clock::now();
-		auto duration1 = std::chrono::duration_cast<std::chrono::milliseconds>(stop1 - start1).count();
-		std::cout << "Time taken by function recognizer: " << duration1 << " milliseconds" << std::endl;
-		auto start2 = std::chrono::high_resolution_clock::now();
-		auto final = this->extraction->clusterBoxes(results);
-		auto stop2 = std::chrono::high_resolution_clock::now();
-		auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(stop2 - start2).count();
-		std::cout << "Time taken by function cluster: " << duration2 << " milliseconds" << std::endl;
-		std::cout << "Number of codes: " << final.size() << std::endl;
-		for (const auto &x : final)
-			std::cout << "Code: " << x << std::endl;
+		auto codes = this->extraction->clusterBoxes(results, num_of_ids);
+		//auto stop2 = std::chrono::high_resolution_clock::now();
+		//auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(stop2 - start2).count();
+		//std::cout << "Time taken by function cluster: " << duration2 << " milliseconds" << std::endl;
+		return codes;
 	}
 }

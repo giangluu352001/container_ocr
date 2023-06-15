@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <string>
-#include <include/utils.h>
+#include "include/utils.h"
 
 namespace ContainerOCR {
     class ContExtraction {
@@ -14,7 +14,7 @@ namespace ContainerOCR {
                 this->max_len_code = max_len_code;
                 this->max_len_seri_number = max_len_seri_number;
             }
-            std::vector<std::pair<std::string, float>> clusterBoxes(std::vector<OCRResult> &codes);
+            std::vector<std::pair<std::string, float>> clusterBoxes(std::vector<OCRResult> &codes, const int &num_of_ids);
         private:
             std::string alphabet = "0123456789A BCDEFGHIJK LMNOPQRSTU VWXYZ";
             int cluster_max_chars = 15;

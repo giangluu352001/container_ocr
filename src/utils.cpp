@@ -1,4 +1,4 @@
-#include <include/utils.h>
+#include "include/utils.h"
 
 namespace ContainerOCR {
     void Utils::sortPointsByX(std::vector<cv::Point2f> &points) {
@@ -71,10 +71,6 @@ namespace ContainerOCR {
     }
 
     cv::Mat Utils::get_rotate_crop_image(const cv::Mat &srcimage, const std::vector<cv::Point2f> &box) {
-        //std::vector<cv::Point2f> points(4);
-        //for (int i = 0; i < 4; i++) {
-        //    points[i] = cv::Point2f(box[i][0], box[i][1]);
-        //}
 
         cv::Point2f tl = box[0];
         cv::Point2f tr = box[1];

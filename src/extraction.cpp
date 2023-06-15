@@ -1,6 +1,6 @@
 #include <cmath>
-#include <include/extraction.h>
-#include "opencv2/opencv.hpp"
+#include "include/extraction.h"
+#include <opencv2/opencv.hpp>
 
 namespace ContainerOCR {
     bool ContExtraction::checkConstraintCode(const int &idx, const char &c) {
@@ -33,17 +33,12 @@ namespace ContainerOCR {
         return true;
     }
 
-    std::vector<std::pair<std::string, float>> ContExtraction::clusterBoxes(std::vector<OCRResult> &codes) {
-        //for (auto x : codes) {
-        //    std::cout << x.label << " ___ " << std::endl;
-        //}
+    std::vector<std::pair<std::string, float>> ContExtraction::clusterBoxes(std::vector<OCRResult> &codes, const int &num_of_ids) {
         std::vector<std::pair<std::string, float>> results;
-        int num_of_ids = 0;
-        for (const auto &id : codes) {
-            num_of_ids += id.label.first.length();
+        if (num_of_ids < this->max_len_code) {
+            return results;
         }
         int k = std::ceil(static_cast<float>(num_of_ids) / this->cluster_max_chars);
-        //std::cout << "k: " << k << std::endl;
         if (k > 1) {
             int numPoints = codes.size();
             cv::Mat data(numPoints, 2, CV_32F);
@@ -64,6 +59,9 @@ namespace ContainerOCR {
                     }
                 }
                 auto final_code = this->merge_code(region);
+                if (final_code.first.length() < this->max_len_code) {
+                    continue;
+                }
                 results.push_back(final_code);
             }
         }
@@ -81,16 +79,17 @@ namespace ContainerOCR {
         }
         else {
             Utils::sortBoxesByX(codes);
-            for (int i = 0; i < codes.size(); i++) {
-                if (codes[i].label.first.length() == this->max_len_code) {
-                    std::iter_swap(codes.begin(), codes.begin() + i);
-                }
-                else if (codes[i].label.first.length() == this->max_len_seri_number && i == 0) {
-                    std::iter_swap(codes.begin() + 1, codes.begin() + i);
+            if (codes.size() > 1) {
+                for (int i = 0; i < codes.size(); i++) {
+                    if (codes[i].label.first.length() == this->max_len_code) {
+                        std::iter_swap(codes.begin(), codes.begin() + i);
+                    }
+                    else if (codes[i].label.first.length() == this->max_len_seri_number && i == 0) {
+                        std::iter_swap(codes.begin() + 1, codes.begin() + i);
+                    }
                 }
             }
         }
-
         std::string code = "";
         float confident = 0.0;
         std::priority_queue<CharacterReplacement> replacements;
