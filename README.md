@@ -8,30 +8,16 @@
 - Especially, You must put pretrained model in the folder `./assets/weights` 
 and video sample in the folder `./assets/images` before running the project.
 - To run this project, you can use the following command:
-```docker build -t container_ocr .```
 
-
-```export DISPLAY="IP_HOST:0.0"```, replace IP_HOST with your IP address.
-
-
-```xhost +```
-
-
-```docker run -it --rm --runtime=nvidia --gpus all -v /path/to/your/project/assets:/workspace/assets -e DISPLAY=$DISPLAY container_ocr bash```
-
-
-```mkdir build && cd build```
-
-
-```cmake ..```
-
-
-```make -j8```
-
-
-```./container_ocr ../assets/images/sample.mp4```
-
-
+    ```docker build -t container_ocr .```
+    ```export DISPLAY="IP_HOST:0.0"```, replace IP_HOST with your IP address.
+    ```xhost +```
+    ```docker run -it --rm --runtime=nvidia --gpus all -v /path/to/your/project/assets:/workspace/assets -e DISPLAY=$DISPLAY container_ocr bash```
+    ```mkdir build && cd build```
+    ```cmake ..```
+    ```make -j8```
+    ```./container_ocr ../assets/images/sample.mp4```
+    
 - This project is not developed for production, so it is not optimized for speed.
 - This project can only run on Libtorch and Torchvision in C++ 17 because of limitation of some operartors. 
 Thus, I cannot export to ONNX format and run on TensorRT or OpenVino.
