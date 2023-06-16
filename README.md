@@ -1,5 +1,5 @@
 # container_ocr
-![Automatic Container Recognition](C:\Users\tgian\Downloads\LVTN_Container\TESTS\test10230.png)
+![Automatic Container Recognition](test10230.png)
 - This project use DBNet to detect text and SVTR to recognize text and K-means to cluster text.
 - The simplest way to run this project is to use the docker image. 
 - You can build the image following the instructions in the Dockerfile.
